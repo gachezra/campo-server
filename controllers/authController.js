@@ -24,7 +24,7 @@ module.exports.sendMessage = async (req,res,next) =>  {
       subject: 'Contact Page Message',
       html: `
         <h1>${subject}</h1>
-        <p>Hello ${name},</p>
+        <p>Sender's name: ${name},</p>
         <p>Sender's email: ${email}</p>
         <p>${message}</p>
       `
