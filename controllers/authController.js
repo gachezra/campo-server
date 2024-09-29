@@ -14,6 +14,29 @@ const mg = mailgun.client({
   url: process.env.MAILGUN_URL
 });
 
+module.exports.sendMessage = async (req,res,next) =>  {
+  try {
+    const { name, email, subject, message } = req.body;
+
+    const mailOptions = {
+      from: 'VarsityRank Message <contactpage@pexmon.one>',
+      to: 'ezragach@pexmon.one',
+      subject: 'Contact Page Message',
+      html: `
+        <h1>${subject}</h1>
+        <p>Hello ${name},</p>
+        <p>Sender's email: ${email}</p>
+        <p>${message}</p>
+      `
+    };
+
+    await mg.messages.create('pexmon.one', mailOptions);
+
+    res.status(200).json({ msg: 'Message sent successfuly.' });
+  } catch (error) {
+    next(error)
+  }
+}
 exports.sendVerificationEmail = async (user, universityIndex) => {
   try {
     const token = user.generateVerificationToken(universityIndex);

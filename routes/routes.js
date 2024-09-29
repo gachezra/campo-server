@@ -16,6 +16,7 @@ router.get('/profile/:userId', protect, authController.getUser);
 router.post('/setAvatar/:userId', protect, authController.updateAvatarConfig);
 router.post('/change-password/:token', authController.resetPassword);
 router.post('/request-password-reset', authController.requestPasswordReset);
+router.post('/sendMessage', authController.sendMessage);
 
 // University routes
 router.get('/universities', universityController.getUniversities);
