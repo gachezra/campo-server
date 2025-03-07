@@ -67,11 +67,12 @@ exports.createUniversity = async (req, res) => {
       emailDomain
     });
 
-    // Create branches if provided
+    // In createUniversity:
     if (branches && Array.isArray(branches)) {
-      const branchDocuments = await University.Branch.create(branches);
+      const branchDocuments = await Branch.create(branches);
       newUniversity.branches = branchDocuments.map(branch => branch._id);
     }
+
 
     const savedUniversity = await newUniversity.save();
     res.status(201).json(savedUniversity);
@@ -98,7 +99,7 @@ exports.addBranchToUniversity = async (req, res) => {
     }
 
     // Create a new branch
-    const newBranch = await University.Branch.create(branchData);
+    const newBranch = await Branch.create(branchData);
 
     // Add the new branch to the university
     university.branches.push(newBranch._id);
