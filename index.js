@@ -24,7 +24,7 @@ mongoose.connect(
 app.use('/api', routes);
 
 app.get('/', (req, res) => {
-  res.send('Welcome to the University Rating API');
+  res.send('Chill, niko on!');
 })
 
 const PORT = process.env.PORT || 5000;
