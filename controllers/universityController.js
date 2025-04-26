@@ -197,6 +197,7 @@ exports.getBranchesByUniversity = async (req, res) => {
       _id: branch._id,
       name: branch.name,
       contact:branch.contact,
+      email:branch.email,
       programs_offered: branch.programs_offered,
       location: branch.location,
       image_gallery: branch.image_gallery
@@ -223,6 +224,8 @@ exports.getBranchByUniversity = async (req, res) => {
       _id: branch._id,
       name: branch.name,
       location: branch.location,
+      contact:branch.contact,
+      email:branch.email,
       overall_rating: branch.overall_rating,
       academic_rating: branch.academic_rating,
       facilities_rating: branch.facilities_rating,
