@@ -81,6 +81,35 @@ exports.createUniversity = async (req, res) => {
   }
 };
 
+exports.updateUniversity = async (req, res) => {
+  try {
+    // Check if the user is an admin
+    const user = await User.findById(req.params.userId);
+    if (!user || user.role !== 'admin') {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+
+    const { universityId } = req.params;
+    const universityData = req.body;
+
+    // Find the university by ID
+    const university = await University.findById(universityId);
+    if (!university) {
+      return res.status(404).json({ error: 'Branch not found' });
+    }
+
+    // Update the university data
+    Object.assign(university, universityData);
+
+    // Save the updated university
+    const updatedUniversity = await university.save();
+
+    res.json(updatedUniversity);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+};
+
 exports.addBranchToUniversity = async (req, res) => {
   try {
     // Check if the user is an admin
