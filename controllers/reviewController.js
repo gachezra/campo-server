@@ -20,12 +20,6 @@ exports.createReview = async (req, res) => {
       return res.status(403).json({ error: 'Please verify your school email for this university before leaving a review' });
     }
 
-    // Check if a review already exists
-    const existingReview = await Review.findOne({ user_id: userId, university: universityId, branch: branchId });
-    if (existingReview) {
-      return res.status(400).json({ error: 'You have already reviewed this university.' });
-    }
-
     const { 
       academic_rating,
       facilities_rating,
@@ -51,26 +45,39 @@ exports.createReview = async (req, res) => {
       return res.status(400).json({ error: 'Ratings must be numbers between 1 and 10' });
     }
 
+    // Validate cost_of_living and comment
+    if (isNaN(cost_of_living) || cost_of_living < 1) {
+      return res.status(400).json({ error: 'Cost of living must be a positive number' });
+    }
+    if (!comment || comment.trim().length === 0) {
+      return res.status(400).json({ error: 'Comment is required' });
+    }
+
     // Calculate overall rating
     const added = academicRating + facilitiesRating + socialLifeRating + careerProspectsRating;
     const overallRating = added / 4;
 
-    // Create a new review
-    const review = new Review({
-      user_id: userId,
-      university: universityId,
-      branch: branchId,
-      academic_rating: academicRating,
-      facilities_rating: facilitiesRating,
-      social_life_rating: socialLifeRating,
-      career_prospects_rating: careerProspectsRating,
-      cost_of_living,
-      comment,
-      overall_rating: overallRating,
-      date: new Date()
-    });
+    // Check if a review already exists
+    const existingReview = await Review.findOne({ user_id: userId, university: universityId, branch: branchId });
 
-    await review.save();
+    // Create or update the review
+    const review = await Review.findOneAndUpdate(
+      { user_id: userId, university: universityId, branch: branchId },
+      {
+        overall_rating: overallRating,
+        academic_rating: academicRating,
+        facilities_rating: facilitiesRating,
+        social_life_rating: socialLifeRating,
+        career_prospects_rating: careerProspectsRating,
+        cost_of_living,
+        comment,
+        user_id: userId,
+        university: universityId,
+        branch: branchId,
+        date: new Date()
+      },
+      { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true }
+    );
 
     // Update university ratings
     const university = await University.findById(universityId);
@@ -95,10 +102,22 @@ exports.createReview = async (req, res) => {
     await branch.save();
     await university.save();
 
-    res.status(201).json(review);
+    // Return appropriate response based on whether it was a creation or update
+    const message = existingReview ? 'Review updated successfully' : 'Review created successfully';
+    res.status(201).json({ review, message });
   } catch (err) {
-    console.error('Error creating review:', err);
-    res.status(400).json({ error: 'Failed to create review. Please try again.' });
+    console.error('Error in createReview:', {
+      userId: req.body.userId,
+      universityId: req.params.universityId,
+      branchId: req.params.branchId,
+      error: err.message,
+      stack: err.stack
+    });
+    if (err.code === 11000) {
+      // This should only happen if the explicit check missed an existing review
+      return res.status(400).json({ error: 'You have already reviewed this university.' });
+    }
+    res.status(400).json({ error: 'Failed to process review. Please try again.' });
   }
 };
 
