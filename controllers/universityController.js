@@ -29,20 +29,20 @@ exports.getUniversities = async (req, res) => {
 
 exports.getUniversityById = async (req, res) => {
   try {
-    const university = await University.findById(req.params.id);
+    const university = await University.findById(req.params.id)
+      .populate('branches', 'name location programs_offered');
+    
     if (!university) return res.status(404).json({ error: 'University not found' });
-
-    // Fetch reviews separately
+    
     const reviews = await Review.find({ university_id: req.params.id })
       .populate('user_id', 'username')
       .exec();
-
-    // Combine university data with reviews
+    
     const universityWithReviews = {
       ...university.toObject(),
       reviews: reviews
     };
-
+    
     res.json(universityWithReviews);
   } catch (err) {
     res.status(500).json({ error: err.message });
