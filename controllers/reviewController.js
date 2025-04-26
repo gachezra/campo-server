@@ -20,6 +20,12 @@ exports.createReview = async (req, res) => {
       return res.status(403).json({ error: 'Please verify your school email for this university before leaving a review' });
     }
 
+    // Check if a review already exists
+    const existingReview = await Review.findOne({ user_id: userId, university: universityId, branch: branchId });
+    if (existingReview) {
+      return res.status(400).json({ error: 'You have already reviewed this university.' });
+    }
+
     const { 
       academic_rating,
       facilities_rating,
@@ -29,56 +35,56 @@ exports.createReview = async (req, res) => {
       comment
     } = req.body;
 
-    // Convert ratings to numbers using parseInt()
+    // Validate and convert ratings to numbers
     const academicRating = parseInt(academic_rating, 10);
     const facilitiesRating = parseInt(facilities_rating, 10);
     const socialLifeRating = parseInt(social_life_rating, 10);
     const careerProspectsRating = parseInt(career_prospects_rating, 10);
 
-    // Perform the addition after converting to numbers
+    // Ensure ratings are within valid range (1-10)
+    if (
+      isNaN(academicRating) || academicRating < 1 || academicRating > 10 ||
+      isNaN(facilitiesRating) || facilitiesRating < 1 || facilitiesRating > 10 ||
+      isNaN(socialLifeRating) || socialLifeRating < 1 || socialLifeRating > 10 ||
+      isNaN(careerProspectsRating) || careerProspectsRating < 1 || careerProspectsRating > 10
+    ) {
+      return res.status(400).json({ error: 'Ratings must be numbers between 1 and 10' });
+    }
+
+    // Calculate overall rating
     const added = academicRating + facilitiesRating + socialLifeRating + careerProspectsRating;
     const overallRating = added / 4;
 
-    // Try to find an existing review or create a new one
-    const review = await Review.findOneAndUpdate(
-      { user_id: userId, university: universityId, branch: branchId },
-      {
-        overall_rating: overallRating,
-        academic_rating,
-        facilities_rating,
-        social_life_rating,
-        career_prospects_rating,
-        cost_of_living,
-        comment,
-        user_id: userId,
-        university: universityId,
-        branch: branchId,
-        date: new Date() // Update the date if the review is being modified
-      },
-      { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true }
-    );
+    // Create a new review
+    const review = new Review({
+      user_id: userId,
+      university: universityId,
+      branch: branchId,
+      academic_rating: academicRating,
+      facilities_rating: facilitiesRating,
+      social_life_rating: socialLifeRating,
+      career_prospects_rating: careerProspectsRating,
+      cost_of_living,
+      comment,
+      overall_rating: overallRating,
+      date: new Date()
+    });
 
-    // Update the university's ratings
+    await review.save();
+
+    // Update university ratings
     const university = await University.findById(universityId);
-
-    // Calculate new averages
     const reviews = await Review.find({ university: universityId });
-    
     university.academic_rating = calculateAverage(reviews, 'academic_rating');
     university.facilities_rating = calculateAverage(reviews, 'facilities_rating');
     university.social_life_rating = calculateAverage(reviews, 'social_life_rating');
     university.career_prospects_rating = calculateAverage(reviews, 'career_prospects_rating');
     university.cost_of_living = calculateAverage(reviews, 'cost_of_living');
-
-    // Calculate the overall rating as an average of other ratings
     university.overall_rating = calculateOverallRating(university);
 
-    //update branch rating
+    // Update branch ratings
     const branch = await Branch.findById(branchId);
-    
-    // Calculate new averages for the branch
     const branchReviews = await Review.find({ university: universityId, branch: branchId });
-    
     branch.academic_rating = calculateBranchAverage(branchReviews, 'academic_rating');
     branch.facilities_rating = calculateBranchAverage(branchReviews, 'facilities_rating');
     branch.social_life_rating = calculateBranchAverage(branchReviews, 'social_life_rating');
@@ -91,12 +97,8 @@ exports.createReview = async (req, res) => {
 
     res.status(201).json(review);
   } catch (err) {
-    if (err.code === 11000) {
-      // This error code indicates a duplicate key error
-      res.status(400).json({ error: 'You have already reviewed this university. Your review has been updated.' });
-    } else {
-      res.status(400).json({ error: err.message });
-    }
+    console.error('Error creating review:', err);
+    res.status(400).json({ error: 'Failed to create review. Please try again.' });
   }
 };
 
